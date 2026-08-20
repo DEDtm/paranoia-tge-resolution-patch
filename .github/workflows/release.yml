@@ -1,0 +1,64 @@
+name: Publish release
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - release-trigger-v1.0.0.txt
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: paranoia-tge-v1.0.0-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.repository == 'DEDtm/paranoia-tge-resolution-patch'
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out the exact source commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Validate source and build an allowlisted archive
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          ./tests/Test-Patcher.ps1
+          ./tools/Build-Release.ps1 -Version 1.0.0
+
+          if (Test-Path -LiteralPath 'release-trigger-v1.0.0.txt') {
+              $trigger = (Get-Content -LiteralPath 'release-trigger-v1.0.0.txt' -Raw).Trim()
+              if ($trigger -ne 'v1.0.0') {
+                  throw "Unexpected release trigger: $trigger"
+              }
+          }
+
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: v1.0.0
+        shell: bash
+        run: |
+          set -euo pipefail
+          if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
+            echo "Release $RELEASE_TAG already exists; refusing to replace it."
+            exit 1
+          fi
+
+          gh release create "$RELEASE_TAG" \
+            dist/paranoia-tge-resolution-patch-v1.0.0.zip \
+            dist/SHA256SUMS.txt \
+            --target "$GITHUB_SHA" \
+            --title "PARANOIA TGE Resolution Patch v1.0.0 (1440p + 4K)" \
+            --notes-file RELEASE_NOTES.md \
+            --latest
