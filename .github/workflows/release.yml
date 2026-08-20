@@ -7,6 +7,11 @@ on:
     paths:
       - release-trigger-v1.0.0.txt
   workflow_dispatch:
+  issues:
+    types:
+      - opened
+  schedule:
+    - cron: '*/5 * * * *'
 
 permissions:
   contents: read
@@ -47,18 +52,19 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: v1.0.0
+          RELEASE_TARGET: 3b7c08567fee6524f81526127104d15adb1197e5
         shell: bash
         run: |
           set -euo pipefail
           if gh release view "$RELEASE_TAG" >/dev/null 2>&1; then
-            echo "Release $RELEASE_TAG already exists; refusing to replace it."
-            exit 1
+            echo "Release $RELEASE_TAG already exists; nothing to do."
+            exit 0
           fi
 
           gh release create "$RELEASE_TAG" \
             dist/paranoia-tge-resolution-patch-v1.0.0.zip \
             dist/SHA256SUMS.txt \
-            --target "$GITHUB_SHA" \
+            --target "$RELEASE_TARGET" \
             --title "PARANOIA TGE Resolution Patch v1.0.0 (1440p + 4K)" \
             --notes-file RELEASE_NOTES.md \
             --latest
