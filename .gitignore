@@ -1,0 +1,9 @@
+dist/
+*.dll
+*.exe
+*.pak
+*.wad
+*.bak
+*.tmp
+.paranoia-resolution-patch-backup/
+
